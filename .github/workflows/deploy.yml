@@ -26,6 +26,8 @@ jobs:
 
       - name: Build Project
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
