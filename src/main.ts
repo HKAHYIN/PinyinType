@@ -30,8 +30,13 @@ function navigateTo(route: Route): void {
 }
 
 function handleRoute(route: Route): void {
+  const headerControls = document.querySelector('.header-controls') as HTMLElement;
+  
   if (route === 'menu') {
     menu.show();
+    if (headerControls) {
+      headerControls.style.display = 'flex';
+    }
     if (game) {
       const gameContainer = app!.querySelector('#game-container');
       if (gameContainer) {
@@ -40,6 +45,9 @@ function handleRoute(route: Route): void {
     }
   } else if (route === 'practice') {
     menu.hide();
+    if (headerControls) {
+      headerControls.style.display = 'none';
+    }
   }
 }
 
@@ -60,7 +68,8 @@ renderHeader(app, navigateToMenu);
 game = new Game(app, navigateToMenu);
 menu = new Menu(app, (text) => {
   navigateTo('practice');
-  game?.start(text);
+  const isSpaceDisabled = localStorage.getItem('disableSpace') === 'true';
+  game?.start(text, { disableSpace: isSpaceDisabled });
 });
 
 // 4. Handle initial route
