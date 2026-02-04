@@ -11,18 +11,15 @@ export class Game {
   private startTime: number = 0;
   private isActive: boolean = false;
   private errorCount: number = 0;
-  private totalChars: number = 0;
   private isNormalizing: boolean = false;
-  private lastScrolledRow: number = -1;
   private isPaused: boolean = false;
-  private pauseStartTime: number = 0;
-  private totalPauseTime: number = 0;
   private lastInputTime: number = 0;
   private pauseCheckInterval: number | null = null;
   private pauseMenu: HTMLElement | null = null;
   private visibilityChangeHandler: (() => void) | null = null;
   private disableSpace: boolean = false;
   private keypressTimestamps: number[] = [];
+  private previousInput: string = '';
 
   constructor(root: HTMLElement, onRestart: () => void) {
     this.root = root;
@@ -36,13 +33,11 @@ export class Game {
   private resetGame(): void {
     this.isPaused = false;
     this.errorCount = 0;
-    this.totalChars = 0;
     this.isActive = false;
     this.currentText = '';
-    this.lastScrolledRow = -1;
-    this.totalPauseTime = 0;
     this.lastInputTime = 0;
     this.keypressTimestamps = [];
+    this.previousInput = '';
     
     this.cleanupPauseDetection();
     
@@ -86,8 +81,6 @@ export class Game {
 
     this.disableSpace = !!options.disableSpace;
     this.isPaused = false;
-    this.totalPauseTime = 0;
-    this.pauseStartTime = 0;
     
     if (this.pauseMenu) {
       this.pauseMenu.remove();
@@ -99,12 +92,11 @@ export class Game {
     }
     
     this.errorCount = 0;
-    this.totalChars = 0;
     this.currentText = text;
     this.isActive = true;
     this.startTime = Date.now();
     this.keypressTimestamps = [];
-    this.lastScrolledRow = -1;
+    this.previousInput = '';
     
     const menu = this.root.querySelector('[id^="menu"]')?.parentElement;
     if (menu) {
@@ -119,6 +111,7 @@ export class Game {
     if (!this.container) {
       this.container = document.createElement('div');
       this.container.id = 'game-container';
+      this.container.classList.add('no-select');
       this.root.appendChild(this.container);
     }
     this.container.style.display = 'flex';
@@ -143,14 +136,57 @@ export class Game {
     this.hiddenInput.autocomplete = 'off';
     this.hiddenInput.setAttribute('autocorrect', 'off');
     this.hiddenInput.setAttribute('autocapitalize', 'off');
+    this.hiddenInput.setAttribute('enterkeyhint', 'done');
     this.hiddenInput.spellcheck = false;
     this.hiddenInput.style.display = 'block';
+    this.hiddenInput.style.fontSize = '16px'; 
     this.container.appendChild(this.hiddenInput);
+    
+    // Mobile focus handler
+    const focusHandler = (e: Event) => {
+        // Allow interactions with specific elements (buttons, sliders, links, etc.)
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'BUTTON' || 
+            target.tagName === 'INPUT' ||
+            target.tagName === 'A' ||
+            target.tagName === 'LABEL' ||
+            target.classList.contains('slider') ||
+            target.closest('button') ||
+            target.closest('.header-controls') || 
+            target.closest('.menu-bar')) {
+            return;
+        }
+
+        if (e.type === 'touchstart' || e.type === 'touchend') {
+
+           if (target.closest('#game-container') || target.closest('#results-container')) {
+              if (e.cancelable) e.preventDefault();
+              
+              if (this.isActive && !this.isPaused && this.hiddenInput) {
+                  this.hiddenInput.focus();
+              }
+           }
+           return;
+        }
+
+        if (this.isActive && !this.isPaused && this.hiddenInput) {
+            this.hiddenInput.focus();
+        }
+    };
+    
+    // Attach to document body to ensure global coverage
+    document.body.addEventListener('click', focusHandler);
+    document.body.addEventListener('touchstart', focusHandler, { passive: false });
+    document.body.addEventListener('touchend', focusHandler, { passive: false });
+    
+    document.body.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      return false;
+    });
     
     this.renderWords(text);
     
     this.isPaused = false;
-    this.totalPauseTime = 0;
     this.lastInputTime = Date.now();
     
     this.hiddenInput.oninput = () => {
@@ -303,6 +339,17 @@ export class Game {
     }
     
     const expectedText = this.getExpectedText();
+    
+    // Track errors for new input (accumulated errors)
+    if (input.length > this.previousInput.length) {
+        for (let i = this.previousInput.length; i < input.length; i++) {
+            if (i >= expectedText.length || input[i] !== expectedText[i]) {
+                this.errorCount++;
+            }
+        }
+    }
+    this.previousInput = input;
+
     const inputLength = input.length;
     
     this.wordGroups.forEach(group => {
@@ -432,9 +479,7 @@ export class Game {
             } else {
               singleChar.classList.add('incorrect', 'typed');
               singleChar.classList.remove('correct');
-              this.errorCount++;
             }
-            this.totalChars++;
           }
         }
       }
@@ -445,33 +490,45 @@ export class Game {
     if (input.length >= expectedText.length) {
       isComplete = true;
     }
-
-    else if (input === expectedText) {
-      isComplete = true;
-    }
-
-    else if (input.trimEnd() === expectedText.trimEnd()) {
-      isComplete = true;
-    }
     
     if (isComplete && this.isActive) {
         this.isActive = false;
         this.cleanupPauseDetection();
-        const actualTime = (Date.now() - this.startTime - this.totalPauseTime) / 1000;
+        const actualTime = (Date.now() - this.startTime) / 1000;
         const timeElapsed = Math.max(0.1, actualTime);
         
-        // WPM
-        const correctChars = Math.max(0, this.totalChars - this.errorCount);
-        const wpm = Math.round((correctChars / 5) / (timeElapsed / 60));
+        // Calculate final stats
+        const totalKeystrokes = this.keypressTimestamps.length;
+        let finalCorrect = 0;
+        let finalIncorrect = 0;
+        let finalExtra = 0;
+        let finalMissed = 0;
         
-        const accuracy = this.totalChars > 0 
-          ? ((1 - this.errorCount / this.totalChars) * 100).toFixed(1)
+        const checkLen = Math.min(input.length, expectedText.length);
+        for(let i=0; i<checkLen; i++) {
+            if (input[i] === expectedText[i]) {
+                finalCorrect++;
+            } else {
+                finalIncorrect++;
+            }
+        }
+        
+        if (input.length > expectedText.length) {
+            finalExtra = input.length - expectedText.length;
+        } else if (expectedText.length > input.length) {
+            finalMissed = expectedText.length - input.length;
+        }
+
+        // WPM (Net)
+        const wpm = Math.round((finalCorrect / 5) / (timeElapsed / 60));
+        
+        // Accuracy (based on total keystrokes and accumulated errors)
+        const accuracy = totalKeystrokes > 0 
+          ? Math.max(0, (1 - this.errorCount / totalKeystrokes) * 100).toFixed(1)
           : '100.0';
           
-        // Additional Stats
         // Raw WPM
-        const rawWpm = Math.round((this.totalChars / 5) / (timeElapsed / 60));
-        const incorrectChars = this.errorCount;
+        const rawWpm = Math.round((totalKeystrokes / 5) / (timeElapsed / 60));
 
         // Consistency & AFK
         let afkMs = 0;
@@ -482,7 +539,6 @@ export class Game {
           if (sortedTimestamps[0] - this.startTime > 2000) {
             afkMs += (sortedTimestamps[0] - this.startTime);
           }
-          // Check gaps between keypresses
           for (let i = 1; i < sortedTimestamps.length; i++) {
             const gap = sortedTimestamps[i] - sortedTimestamps[i-1];
             if (gap > 2000) {
@@ -490,9 +546,6 @@ export class Game {
             }
           }
         }
-        
-        // Adjust AFK time by subtracting pause time (authorized idle)
-        afkMs = Math.max(0, afkMs - this.totalPauseTime);
         
         const totalActiveTimeMs = timeElapsed * 1000;
         const afkPercentage = totalActiveTimeMs > 0 ? Math.min(100, (afkMs / totalActiveTimeMs) * 100).toFixed(2) : '0.00';
@@ -540,7 +593,7 @@ export class Game {
                 </div>
                 <div class="result-group small">
                    <div class="result-label">characters</div>
-                   <div class="result-val">${correctChars}/${incorrectChars}/0/0</div>
+                   <div class="result-val">${finalCorrect}/${finalIncorrect}/${finalExtra}/${finalMissed}</div>
                 </div>
                 <div class="result-group small">
                    <div class="result-label">consistency</div>
@@ -598,7 +651,11 @@ export class Game {
       if (/[\u4e00-\u9fa5]/.test(char)) {
         const py = pinyin(char, { toneType: 'none', v: true });
         result += py;
-      } else {
+      } else if (char === ' ') {
+         if (!this.disableSpace) {
+             result += char;
+         }
+      } else if (char.trim()) {
         result += char;
       }
     }
@@ -637,30 +694,23 @@ export class Game {
     const activeRect = activeGroup.getBoundingClientRect();
     const wrapperRect = this.wordsWrapper.getBoundingClientRect();
     
-    const activeTop = activeRect.top - wrapperRect.top + this.wordsWrapper.scrollTop;
-    const rowHeight = activeRect.height + 24;
-    const currentRow = Math.floor(activeTop / rowHeight);
+    const relativeTop = activeRect.top - wrapperRect.top;
     
-    const targetRowSet = Math.floor(currentRow / 3);
-    const lastRowSet = Math.floor(this.lastScrolledRow / 3);
+    const isMobile = window.innerWidth <= 1366 || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
     
-    if (targetRowSet > lastRowSet) {
-      const scrollToRow = targetRowSet * 3;
-      const scrollPosition = scrollToRow * rowHeight;
-      
-      this.wordsWrapper.scrollTo({
-        top: Math.max(0, scrollPosition - 50),
-        behavior: 'smooth'
-      });
-      
-      this.lastScrolledRow = currentRow;
-    } else if (this.lastScrolledRow === -1) {
-      const scrollPosition = Math.max(0, activeTop - 50);
-      this.wordsWrapper.scrollTo({
-        top: scrollPosition,
-        behavior: 'smooth'
-      });
-      this.lastScrolledRow = currentRow;
+    const thresholdRatio = isMobile ? 0.2 : 0.5;
+    const threshold = wrapperRect.height * thresholdRatio;
+    
+    if (relativeTop > threshold || relativeTop < 0) {
+        const scrollTop = this.wordsWrapper.scrollTop;
+        
+        const targetRatio = isMobile ? 0.05 : 0.3;
+        const targetTop = scrollTop + relativeTop - (wrapperRect.height * targetRatio);
+        
+        this.wordsWrapper.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: 'auto'
+        });
     }
   }
 
@@ -681,7 +731,6 @@ export class Game {
     if (this.isPaused || !this.isActive) return;
     
     this.isPaused = true;
-    this.pauseStartTime = Date.now();
     
     if (this.hiddenInput) {
       this.hiddenInput.blur();
@@ -693,9 +742,6 @@ export class Game {
   /* Resume the game */
   private resume(): void {
     if (!this.isPaused || !this.isActive) return;
-    
-    const pauseDuration = Date.now() - this.pauseStartTime;
-    this.totalPauseTime += pauseDuration;
     
     this.isPaused = false;
     this.lastInputTime = Date.now();

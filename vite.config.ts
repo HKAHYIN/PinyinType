@@ -25,12 +25,16 @@ export default defineConfig({
         stringArrayEncoding: ['base64'],
         stringArrayThreshold: 0.75,
         transformObjectKeys: true,
-        unicodeEscapeSequence: false,
+        unicodeEscapeSequence: false
       },
     }),
   ],
+  // server: {
+  //   host: true,
+  //   allowedHosts: true
+  // },
   build: {
     outDir: 'dist',
-    sourcemap: false,
-  },
+    sourcemap: false
+  }
 });
