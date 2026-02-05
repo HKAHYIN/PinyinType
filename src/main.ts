@@ -3,14 +3,12 @@ import { renderHeader } from './components/Header';
 import { Menu } from './components/Menu';
 import { Game } from './components/Game';
 
-// 1. Find the App Root
 const app = document.querySelector<HTMLDivElement>('#app');
 
 if (!app) {
   throw new Error("App root not found");
 }
 
-// 2. Router setup
 type Route = 'menu' | 'practice';
 
 const BASE_URL = import.meta.env.BASE_URL; 
@@ -51,13 +49,11 @@ function handleRoute(route: Route): void {
   }
 }
 
-// Handle browser back/forward buttons
 window.addEventListener('popstate', (e) => {
   const route = e.state?.route || getCurrentRoute();
   handleRoute(route);
 });
 
-// 3. Initialize components
 let game: Game | null = null;
 let menu: Menu;
 
@@ -72,5 +68,4 @@ menu = new Menu(app, (text) => {
   game?.start(text, { disableSpace: isSpaceDisabled });
 });
 
-// 4. Handle initial route
 handleRoute(getCurrentRoute());

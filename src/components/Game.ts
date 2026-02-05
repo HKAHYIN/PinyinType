@@ -29,7 +29,6 @@ export class Game {
     };
   }
 
-  /* Reset the game state */
   private resetGame(): void {
     this.isPaused = false;
     this.errorCount = 0;
@@ -48,33 +47,21 @@ export class Game {
     
     this.hidePauseMenu();
     
-    const pauseMenuInDOM = document.querySelector('#pause-menu');
-    if (pauseMenuInDOM) {
-      pauseMenuInDOM.remove();
-    }
-    
     if (this.hiddenInput) {
       this.hiddenInput.oninput = null;
       this.hiddenInput.onkeydown = null;
       this.hiddenInput.value = '';
     }
     
-    const existingResults = this.root.querySelector('#results-container');
-    if (existingResults) {
-      existingResults.remove();
-    }
+    this.removeResults();
     
     if (this.container) {
       this.container.style.display = 'none';
     }
     
-    if (this.pauseMenu) {
-      this.pauseMenu.remove();
-      this.pauseMenu = null;
-    }
+    this.removePauseMenu();
   }
 
-  /* Initialize and start the game with the provided text */
   public start(text: string, options: { disableSpace?: boolean } = {}): void {
     // Preprocess text: replace 、 with ， and remove 「」『』
     text = text.replace(/、/g, '，').replace(/[「」『』]/g, '');
@@ -82,14 +69,7 @@ export class Game {
     this.disableSpace = !!options.disableSpace;
     this.isPaused = false;
     
-    if (this.pauseMenu) {
-      this.pauseMenu.remove();
-      this.pauseMenu = null;
-    }
-    const pauseMenuInDOM = document.querySelector('#pause-menu');
-    if (pauseMenuInDOM) {
-      pauseMenuInDOM.remove();
-    }
+    this.removePauseMenu();
     
     this.errorCount = 0;
     this.currentText = text;
@@ -103,10 +83,7 @@ export class Game {
       (menu as HTMLElement).style.display = 'none';
     }
     
-    const existingResults = this.root.querySelector('#results-container');
-    if (existingResults) {
-      existingResults.remove();
-    }
+    this.removeResults();
     
     if (!this.container) {
       this.container = document.createElement('div');
@@ -142,31 +119,18 @@ export class Game {
     this.hiddenInput.style.fontSize = '16px'; 
     this.container.appendChild(this.hiddenInput);
     
-    // Mobile focus handler
     const focusHandler = (e: Event) => {
-        // Allow interactions with specific elements (buttons, sliders, links, etc.)
         const target = e.target as HTMLElement;
-        if (target.tagName === 'BUTTON' || 
-            target.tagName === 'INPUT' ||
-            target.tagName === 'A' ||
-            target.tagName === 'LABEL' ||
+        if (['BUTTON', 'INPUT', 'A', 'LABEL'].includes(target.tagName) || 
             target.classList.contains('slider') ||
-            target.closest('button') ||
-            target.closest('.header-controls') || 
-            target.closest('.menu-bar')) {
+            target.closest('button, .header-controls, .menu-bar')) {
             return;
         }
 
-        if (e.type === 'touchstart' || e.type === 'touchend') {
-
-           if (target.closest('#game-container') || target.closest('#results-container')) {
-              if (e.cancelable) e.preventDefault();
-              
-              if (this.isActive && !this.isPaused && this.hiddenInput) {
-                  this.hiddenInput.focus();
-              }
-           }
-           return;
+        const isTouch = e.type === 'touchstart' || e.type === 'touchend';
+        if (isTouch) {
+           if (!target.closest('#game-container, #results-container')) return;
+           if (e.cancelable) e.preventDefault();
         }
 
         if (this.isActive && !this.isPaused && this.hiddenInput) {
@@ -174,7 +138,6 @@ export class Game {
         }
     };
     
-    // Attach to document body to ensure global coverage
     document.body.addEventListener('click', focusHandler);
     document.body.addEventListener('touchstart', focusHandler, { passive: false });
     document.body.addEventListener('touchend', focusHandler, { passive: false });
@@ -217,7 +180,6 @@ export class Game {
     }, 100);
   }
 
-  /* Render the text into the DOM structure */
   private renderWords(text: string): void {
     if (!this.wordsWrapper) return;
 
@@ -299,7 +261,6 @@ export class Game {
     }
   }
 
-  /* Convert input to standard format */
   private normalizeInput(input: string): string {
     let normalized = '';
     for (let i = 0; i < input.length; i++) {
@@ -313,7 +274,6 @@ export class Game {
     return normalized;
   }
 
-  /* Handle user input events */
   private handleInput(): void {
     if (!this.isActive || !this.hiddenInput) return;
     
@@ -340,7 +300,6 @@ export class Game {
     
     const expectedText = this.getExpectedText();
     
-    // Track errors for new input (accumulated errors)
     if (input.length > this.previousInput.length) {
         for (let i = this.previousInput.length; i < input.length; i++) {
             if (i >= expectedText.length || input[i] !== expectedText[i]) {
@@ -435,9 +394,7 @@ export class Game {
           });
         }
       } else if (type === 'single' && expectedChars) {
-        // Special handling for disabled spaces (length 0)
         if (this.disableSpace && (expectedChars === ' ' || expectedChars === '\u00A0') && startPos === endPos) {
-
            const singleChar = group.querySelector('.char:not(.pinyin .char)');
            if (singleChar) {
              singleChar.classList.add('correct', 'typed');
@@ -485,165 +442,13 @@ export class Game {
       }
     }
 
-    let isComplete = false;
-    
-    if (input.length >= expectedText.length) {
-      isComplete = true;
-    }
-    
-    if (isComplete && this.isActive) {
+    if (input.length >= expectedText.length && this.isActive) {
         this.isActive = false;
         this.cleanupPauseDetection();
-        const actualTime = (Date.now() - this.startTime) / 1000;
-        const timeElapsed = Math.max(0.1, actualTime);
-        
-        // Calculate final stats
-        const totalKeystrokes = this.keypressTimestamps.length;
-        let finalCorrect = 0;
-        let finalIncorrect = 0;
-        let finalExtra = 0;
-        let finalMissed = 0;
-        
-        const checkLen = Math.min(input.length, expectedText.length);
-        for(let i=0; i<checkLen; i++) {
-            if (input[i] === expectedText[i]) {
-                finalCorrect++;
-            } else {
-                finalIncorrect++;
-            }
-        }
-        
-        if (input.length > expectedText.length) {
-            finalExtra = input.length - expectedText.length;
-        } else if (expectedText.length > input.length) {
-            finalMissed = expectedText.length - input.length;
-        }
-
-        // WPM (Net)
-        const wpm = Math.round((finalCorrect / 5) / (timeElapsed / 60));
-        
-        // Accuracy (based on total keystrokes and accumulated errors)
-        const accuracy = totalKeystrokes > 0 
-          ? Math.max(0, (1 - this.errorCount / totalKeystrokes) * 100).toFixed(1)
-          : '100.0';
-          
-        // Raw WPM
-        const rawWpm = Math.round((totalKeystrokes / 5) / (timeElapsed / 60));
-
-        // Consistency & AFK
-        let afkMs = 0;
-        const sortedTimestamps = [...this.keypressTimestamps].sort((a, b) => a - b);
-        
-        if (sortedTimestamps.length > 0) {
-          // Check initial gap
-          if (sortedTimestamps[0] - this.startTime > 2000) {
-            afkMs += (sortedTimestamps[0] - this.startTime);
-          }
-          for (let i = 1; i < sortedTimestamps.length; i++) {
-            const gap = sortedTimestamps[i] - sortedTimestamps[i-1];
-            if (gap > 2000) {
-               afkMs += gap;
-            }
-          }
-        }
-        
-        const totalActiveTimeMs = timeElapsed * 1000;
-        const afkPercentage = totalActiveTimeMs > 0 ? Math.min(100, (afkMs / totalActiveTimeMs) * 100).toFixed(2) : '0.00';
-
-        const durationMs = Date.now() - this.startTime;
-        const numBuckets = Math.max(1, Math.ceil(durationMs / 1000));
-        const bucketCounts = new Array(numBuckets).fill(0);
-        
-        sortedTimestamps.forEach(ts => {
-            const relativeTime = ts - this.startTime;
-            const bucketIndex = Math.min(numBuckets - 1, Math.floor(relativeTime / 1000));
-            bucketCounts[bucketIndex]++;
-        });
-        
-        const bucketWpms = bucketCounts.map(count => (count / 5) * 60);
-        const mean = bucketWpms.reduce((a, b) => a + b, 0) / bucketWpms.length || 1;
-        const variance = bucketWpms.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / bucketWpms.length;
-        const stdDev = Math.sqrt(variance);
-        let consistency = 0;
-        if (mean > 0) {
-            const cv = stdDev / mean;
-            consistency = Math.max(0, Math.min(100, Math.round(100 * (1 - cv))));
-        }
-        
-        const resultsContainer = document.createElement('div');
-        resultsContainer.id = 'results-container';
-        resultsContainer.innerHTML = `
-          <div class="results">
-            <div class="results-grid">
-              <div class="result-main">
-                <div class="result-group big">
-                  <div class="result-label">wpm</div>
-                  <div class="result-val main-color">${wpm}</div>
-                </div>
-                <div class="result-group big">
-                  <div class="result-label">acc</div>
-                  <div class="result-val main-color">${accuracy}%</div>
-                </div>
-              </div>
-              
-              <div class="result-stats">
-                <div class="result-group small">
-                   <div class="result-label">raw</div>
-                   <div class="result-val main-color">${rawWpm}</div>
-                </div>
-                <div class="result-group small">
-                   <div class="result-label">characters</div>
-                   <div class="result-val">${finalCorrect}/${finalIncorrect}/${finalExtra}/${finalMissed}</div>
-                </div>
-                <div class="result-group small">
-                   <div class="result-label">consistency</div>
-                   <div class="result-val">${consistency}%</div>
-                </div>
-                <div class="result-group small">
-                   <div class="result-label">time</div>
-                   <div class="result-val">${timeElapsed.toFixed(1)}s</div>
-                   <div class="result-sub-val">${afkPercentage}% afk</div>
-                </div>
-              </div>
-            </div>
-            <button id="restart-button">再试一次</button>
-          </div>
-        `;
-        
-        if (this.container) {
-          const existingResults = this.container.querySelector('#results-container');
-          if (existingResults) {
-            existingResults.remove();
-          }
-          
-          if (this.wordsWrapper) {
-            this.wordsWrapper.style.display = 'none';
-          }
-          if (this.hiddenInput) {
-            this.hiddenInput.style.display = 'none';
-          }
-          
-          this.container.appendChild(resultsContainer);
-          this.container.style.display = 'flex';
-          
-          const restartButton = resultsContainer.querySelector('#restart-button');
-          if (restartButton) {
-            restartButton.addEventListener('click', () => {
-              resultsContainer.remove();
-              if (this.wordsWrapper) {
-                this.wordsWrapper.style.display = 'flex';
-              }
-              if (this.hiddenInput) {
-                this.hiddenInput.style.display = 'block';
-              }
-              this.onRestart();
-            });
-          }
-        }
+        this.showResults(input, expectedText);
     }
   }
 
-  /* Get the full expected pinyin/text string */
   private getExpectedText(): string {
     let result = '';
     for (let i = 0; i < this.currentText.length; i++) {
@@ -662,7 +467,6 @@ export class Game {
     return result;
   }
 
-  /* Update the visual state of pinyin characters */
   private updatePinyinChars(group: HTMLElement, input: string, expected: string): void {
     const chars = group.querySelectorAll('.pinyin .char');
     const expectedChars = Array.from(expected);
@@ -684,7 +488,6 @@ export class Game {
     });
   }
 
-  /* Automatically scroll to keep the active word in view */
   private autoScrollToActive(): void {
     if (!this.wordsWrapper) return;
 
@@ -714,7 +517,6 @@ export class Game {
     }
   }
 
-  /* Set up idle detection for auto-pausing */
   private setupPauseDetection(): void {
     this.pauseCheckInterval = window.setInterval(() => {
       if (!this.isActive || this.isPaused) return;
@@ -726,7 +528,6 @@ export class Game {
     }, 2000);
   }
 
-  /* Pause the game */
   private pause(): void {
     if (this.isPaused || !this.isActive) return;
     
@@ -739,7 +540,6 @@ export class Game {
     this.showPauseMenu();
   }
 
-  /* Resume the game */
   private resume(): void {
     if (!this.isPaused || !this.isActive) return;
     
@@ -753,11 +553,8 @@ export class Game {
     }, 100);
   }
 
-  /* Display the pause menu overlay */
   private showPauseMenu(): void {
-    if (this.pauseMenu) {
-      this.pauseMenu.remove();
-    }
+    this.removePauseMenu();
     
     this.pauseMenu = document.createElement('div');
     this.pauseMenu.id = 'pause-menu';
@@ -783,8 +580,11 @@ export class Game {
     }
   }
 
-  /* Hide the pause menu */
   private hidePauseMenu(): void {
+    this.removePauseMenu();
+  }
+  
+  private removePauseMenu(): void {
     if (this.pauseMenu) {
       this.pauseMenu.remove();
       this.pauseMenu = null;
@@ -795,11 +595,130 @@ export class Game {
     }
   }
 
-  /* Clean up pause detection intervals */
   private cleanupPauseDetection(): void {
     if (this.pauseCheckInterval !== null) {
       clearInterval(this.pauseCheckInterval);
       this.pauseCheckInterval = null;
     }
+  }
+
+  private showResults(input: string, expectedText: string): void {
+    const actualTime = (Date.now() - this.startTime) / 1000;
+    const timeElapsed = Math.max(0.1, actualTime);
+    
+    const totalKeystrokes = this.keypressTimestamps.length;
+    let finalCorrect = 0;
+    let finalIncorrect = 0;
+    
+    const checkLen = Math.min(input.length, expectedText.length);
+    for(let i=0; i<checkLen; i++) {
+        if (input[i] === expectedText[i]) finalCorrect++;
+        else finalIncorrect++;
+    }
+    
+    const finalExtra = Math.max(0, input.length - expectedText.length);
+    const finalMissed = Math.max(0, expectedText.length - input.length);
+
+    const wpm = Math.round((finalCorrect / 5) / (timeElapsed / 60));
+    const accuracy = totalKeystrokes > 0 
+      ? Math.max(0, (1 - this.errorCount / totalKeystrokes) * 100).toFixed(1)
+      : '100.0';
+    const rawWpm = Math.round((totalKeystrokes / 5) / (timeElapsed / 60));
+
+    // AFK Calculation
+    let afkMs = 0;
+    const sortedTimestamps = [...this.keypressTimestamps].sort((a, b) => a - b);
+    if (sortedTimestamps.length > 0) {
+      if (sortedTimestamps[0] - this.startTime > 2000) afkMs += (sortedTimestamps[0] - this.startTime);
+      for (let i = 1; i < sortedTimestamps.length; i++) {
+        const gap = sortedTimestamps[i] - sortedTimestamps[i-1];
+        if (gap > 2000) afkMs += gap;
+      }
+    }
+    const afkPercentage = (timeElapsed > 0) ? Math.min(100, (afkMs / (timeElapsed * 1000)) * 100).toFixed(2) : '0.00';
+
+    const consistency = this.calculateConsistency(sortedTimestamps);
+
+    const resultsContainer = document.createElement('div');
+    resultsContainer.id = 'results-container';
+    resultsContainer.innerHTML = `
+      <div class="results">
+        <div class="results-grid">
+          <div class="result-main">
+            <div class="result-group big">
+              <div class="result-label">wpm</div>
+              <div class="result-val main-color">${wpm}</div>
+            </div>
+            <div class="result-group big">
+              <div class="result-label">acc</div>
+              <div class="result-val main-color">${accuracy}%</div>
+            </div>
+          </div>
+          
+          <div class="result-stats">
+            <div class="result-group small">
+               <div class="result-label">raw</div>
+               <div class="result-val main-color">${rawWpm}</div>
+            </div>
+            <div class="result-group small">
+               <div class="result-label">characters</div>
+               <div class="result-val">${finalCorrect}/${finalIncorrect}/${finalExtra}/${finalMissed}</div>
+            </div>
+            <div class="result-group small">
+               <div class="result-label">consistency</div>
+               <div class="result-val">${consistency}%</div>
+            </div>
+            <div class="result-group small">
+               <div class="result-label">time</div>
+               <div class="result-val">${timeElapsed.toFixed(1)}s</div>
+               <div class="result-sub-val">${afkPercentage}% afk</div>
+            </div>
+          </div>
+        </div>
+        <button id="restart-button">再试一次</button>
+      </div>
+    `;
+    
+    this.removeResults();
+    if (this.wordsWrapper) this.wordsWrapper.style.display = 'none';
+    if (this.hiddenInput) this.hiddenInput.style.display = 'none';
+    
+    if (this.container) {
+      this.container.appendChild(resultsContainer);
+      this.container.style.display = 'flex';
+      
+      const restartButton = resultsContainer.querySelector('#restart-button');
+      if (restartButton) {
+        restartButton.addEventListener('click', () => {
+          resultsContainer.remove();
+          if (this.wordsWrapper) this.wordsWrapper.style.display = 'flex';
+          if (this.hiddenInput) this.hiddenInput.style.display = 'block';
+          this.onRestart();
+        });
+      }
+    }
+  }
+
+  private calculateConsistency(timestamps: number[]): number {
+      const durationMs = Date.now() - this.startTime;
+      const numBuckets = Math.max(1, Math.ceil(durationMs / 1000));
+      const bucketCounts = new Array(numBuckets).fill(0);
+      
+      timestamps.forEach(ts => {
+          const bucketIndex = Math.min(numBuckets - 1, Math.floor((ts - this.startTime) / 1000));
+          bucketCounts[bucketIndex]++;
+      });
+      
+      const bucketWpms = bucketCounts.map(count => (count / 5) * 60);
+      const mean = bucketWpms.reduce((a, b) => a + b, 0) / bucketWpms.length || 1;
+      const variance = bucketWpms.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / bucketWpms.length;
+      const stdDev = Math.sqrt(variance);
+      
+      return mean > 0 ? Math.max(0, Math.min(100, Math.round(100 * (1 - stdDev / mean)))) : 0;
+  }
+
+  private removeResults(): void {
+    const existingResults = this.root.querySelector('#results-container');
+    if (existingResults) existingResults.remove();
   }
 }

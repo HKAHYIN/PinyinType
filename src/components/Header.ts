@@ -19,13 +19,11 @@ export function renderHeader(root: HTMLElement, onRestart: () => void): void {
   brand.style.cursor = 'pointer';
   brand.onclick = onRestart;
   
-  // Initialize toggle state from localStorage (default to true)
   const toggle = header.querySelector('#disable-space-toggle') as HTMLInputElement;
   const storedValue = localStorage.getItem('disableSpace');
   const isSpaceDisabled = storedValue === null ? true : storedValue === 'true';
   toggle.checked = isSpaceDisabled;
   
-  // Save default if not present
   if (storedValue === null) {
     localStorage.setItem('disableSpace', 'true');
   }

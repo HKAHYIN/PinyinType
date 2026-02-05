@@ -9,11 +9,9 @@ export class Menu {
   constructor(root: HTMLElement, onStart: (text: string) => void) {
     this.onStart = onStart;
     
-    // Create container
     this.container = document.createElement('div');
     this.container.style.width = '100%';
     
-    // Create HTML structure
     this.container.innerHTML = `
       <div id="menu-grid" class="grid"></div>
       <div style="margin-top: 40px; border-top: 1px solid #444; padding-top: 20px;">
@@ -48,8 +46,6 @@ export class Menu {
   private attachEvents() {
     const grid = this.container.querySelector('#menu-grid')!;
 
-    
-    // 1. Render Preset Cards
     ARTICLES.forEach(art => {
       const card = document.createElement('div');
       card.className = 'card';
@@ -61,19 +57,15 @@ export class Menu {
       grid.appendChild(card);
     });
 
-    // 2. Random Mode
-    let selectedWordCount = 50; // Default
+    let selectedWordCount = 50; 
     const wordCountButtons = this.container.querySelectorAll('.word-count-btn');
     wordCountButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        // Remove active class from all buttons
         wordCountButtons.forEach(b => b.classList.remove('active'));
-        // Add active class to clicked button
         btn.classList.add('active');
         selectedWordCount = parseInt(btn.getAttribute('data-count') || '50');
       });
     });
-    // Set default active button (50)
     (wordCountButtons[4] as HTMLElement)?.classList.add('active'); // 50 is default
     
     const randomBtn = this.container.querySelector('#btn-random') as HTMLButtonElement;
@@ -83,7 +75,6 @@ export class Menu {
       this.onStart(randomText);
     };
 
-    // 3. Custom Input
     const btn = this.container.querySelector('#btn-custom') as HTMLButtonElement;
     const input = this.container.querySelector('#custom-text') as HTMLTextAreaElement;
     
@@ -96,13 +87,8 @@ export class Menu {
   }
 
   private generateRandomText(wordCount: number): string {
-    // Shuffle vocabulary array
     const shuffled = [...VOCABULARY].sort(() => Math.random() - 0.5);
-    
-    // Select words up to the requested count
     const selectedWords = shuffled.slice(0, Math.min(wordCount, shuffled.length));
-    
-    // Join words with spaces
     return selectedWords.join(' ');
   }
 

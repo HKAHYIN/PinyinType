@@ -12,12 +12,12 @@
 
 * { 
   box-sizing: border-box;
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none; /* Safari */
-  -khtml-user-select: none; /* Konqueror HTML */
-  -moz-user-select: none; /* Old versions of Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 input, textarea {
@@ -168,8 +168,16 @@ input:checked + .slider:before {
   color: var(--text-color);
 }
 
-.card h3, .article-card h4 { margin: 0 0 5px 0; color: var(--text-color); }
-.card p, .article-card p { margin: 0; font-size: 0.8rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.card h3, .article-card h4 {
+   margin: 0 0 5px 0; 
+   color: var(--text-color); 
+  }
+.card p, .article-card p { 
+  margin: 0; font-size: 0.8rem; 
+  overflow: hidden; 
+  white-space: nowrap; 
+  text-overflow: ellipsis; 
+}
 
 /* Custom Input */
 #custom-input-area {
@@ -384,7 +392,6 @@ textarea:focus { outline: 1px solid var(--main-color); }
   51%, 100% { opacity: 0.3; }
 }
 
-/* Results */
 #results-container {
   display: flex;
   justify-content: center;
@@ -487,7 +494,6 @@ textarea:focus { outline: 1px solid var(--main-color); }
   transform: scale(1.05);
 }
 
-/* Pause Menu */
 #pause-menu {
   position: absolute;
   top: 0;
@@ -553,7 +559,6 @@ kbd { background: #2c2e31; padding: 2px 6px; border-radius: 4px; }
 
 /* Mobile Responsiveness */
 @media (max-width: 1366px) {
-  /* Restore scrolling for the body/html */
   body, html {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -569,13 +574,13 @@ kbd { background: #2c2e31; padding: 2px 6px; border-radius: 4px; }
   }
 
   #words-wrapper {
-    padding-bottom: 80vh; /* Extremely large padding to guarantee scroll */
-    max-height: 45vh; /* Reduce height slightly to keep it upper */
+    padding-bottom: 80vh;
+    max-height: 45vh;
     margin-top: 0;
   }
   
   #game-container {
-    justify-content: flex-start; /* Align to top instead of center */
+    justify-content: flex-start;
     padding-top: 10px;
   }
 }
@@ -603,7 +608,7 @@ kbd { background: #2c2e31; padding: 2px 6px; border-radius: 4px; }
   /* Game Area */
   #words-wrapper {
     padding: 15px;
-    padding-bottom: 80vh; /* Allow scrolling last words to top */
+    padding-bottom: 80vh;
     font-size: 1.2rem;
     max-height: 50vh;
   }
@@ -620,7 +625,6 @@ kbd { background: #2c2e31; padding: 2px 6px; border-radius: 4px; }
     font-size: 1rem;
   }
 
-  /* Results */
   .results {
     padding: 20px;
     width: 100%;
@@ -651,7 +655,6 @@ kbd { background: #2c2e31; padding: 2px 6px; border-radius: 4px; }
     font-size: 1.5rem;
   }
 
-  /* Pause Menu */
   .pause-content {
     padding: 40px 20px;
     width: 95%;
