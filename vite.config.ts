@@ -31,10 +31,10 @@ export default defineConfig({
       },
     }),
   ],
-  server: {
-    host: true,
-    allowedHosts: true
-  },
+  // server: {
+  //   host: true,
+  //   allowedHosts: true
+  // },
   build: {
     outDir: 'dist',
     sourcemap: false
