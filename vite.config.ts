@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import obfuscatorPlugin from 'vite-plugin-javascript-obfuscator';
 
 export default defineConfig({
   base: '/PinyinType/',
   plugins: [
+    react(),
     obfuscatorPlugin({
       apply: 'build',
       options: {
@@ -29,10 +31,10 @@ export default defineConfig({
       },
     }),
   ],
-  // server: {
-  //   host: true,
-  //   allowedHosts: true
-  // },
+  server: {
+    host: true,
+    allowedHosts: true
+  },
   build: {
     outDir: 'dist',
     sourcemap: false
