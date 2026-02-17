@@ -31,12 +31,18 @@ export default defineConfig({
       },
     }),
   ],
+  optimizeDeps: {
+    include: ['to-jyutping', 'pinyin-pro', 'opencc-js']
+  },
   // server: {
   //   host: true,
   //   allowedHosts: true
   // },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    commonjsOptions: {
+      include: [/to-jyutping/, /pinyin-pro/, /opencc-js/, /node_modules/]
+    }
   }
 });

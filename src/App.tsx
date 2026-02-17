@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getJyutpingList } from 'to-jyutping';
 import { Game } from './components/Game.tsx';
 import { Header } from './components/Header.tsx';
 import { Menu } from './components/Menu.tsx';
@@ -6,9 +7,7 @@ import { Menu } from './components/Menu.tsx';
 type Route = 'menu' | 'practice';
 type RomanizationMode = 'pinyin' | 'jyutping';
 type ScriptMode = 'simplified' | 'traditional';
-type JyutpingApi = {
-  getJyutpingList: (text: string) => [string, string | null][];
-};
+type JyutpingListFn = (text: string) => [string, string | null][];
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -46,7 +45,7 @@ export function App() {
   const [gameText, setGameText] = useState<string | null>(null);
   const [romanizationMode, setRomanizationMode] = useState<RomanizationMode>(() => getInitialRomanizationMode());
   const [scriptMode, setScriptMode] = useState<ScriptMode>(() => getInitialScriptMode());
-  const [jyutpingApi, setJyutpingApi] = useState<JyutpingApi | null>(null);
+  const jyutpingList: JyutpingListFn = getJyutpingList;
 
   const navigateTo = (next: Route) => {
     const path = next === 'menu' ? BASE_URL : `${BASE_URL}practice`;
@@ -71,24 +70,7 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (romanizationMode !== 'jyutping' || jyutpingApi) return;
-    let cancelled = false;
-    import('to-jyutping').then((mod) => {
-      if (!cancelled) {
-        setJyutpingApi((mod as { default?: JyutpingApi }).default ?? (mod as JyutpingApi));
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [romanizationMode, jyutpingApi]);
-
-  const handleStart = async (text: string) => {
-    if (romanizationMode === 'jyutping' && !jyutpingApi) {
-      const mod = await import('to-jyutping');
-      setJyutpingApi((mod as { default?: JyutpingApi }).default ?? (mod as JyutpingApi));
-    }
+  const handleStart = (text: string) => {
     navigateTo('practice');
     setGameText(text);
   };
@@ -132,7 +114,7 @@ export function App() {
         visible={route === 'practice'}
         romanizationMode={romanizationMode}
         scriptMode={scriptMode}
-        jyutpingApi={jyutpingApi}
+        jyutpingList={jyutpingList}
       />
     </>
   );
