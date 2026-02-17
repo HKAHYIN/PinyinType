@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pinyin } from 'pinyin-pro';
+import { toSimplified, toTraditional } from '../lib/converters/script.ts';
+
+type RomanizationMode = 'pinyin' | 'jyutping';
+type ScriptMode = 'simplified' | 'traditional';
+type JyutpingApi = {
+  getJyutpingList: (text: string) => [string, string | null][];
+};
 
 type GameProps = {
   text: string | null;
   disableSpace: boolean;
   onRestart: () => void;
   visible: boolean;
+  romanizationMode: RomanizationMode;
+  scriptMode: ScriptMode;
+  jyutpingApi: JyutpingApi | null;
 };
 
 type GroupMapItem = {
@@ -48,17 +58,47 @@ type SingleGroupView = {
   charClass: string;
 };
 
+const isChineseChar = (char: string) => /[\u4e00-\u9fa5]/.test(char);
+
+const toPinyin = (char: string) => pinyin(char, { toneType: 'none', v: true });
+
+const stripJyutpingTones = (text: string) => text.replace(/[1-6]/g, '');
+
+const getJyutpingList = (text: string, jyutpingApi: JyutpingApi | null) =>
+  jyutpingApi ? jyutpingApi.getJyutpingList(text) : [];
+
+const getJyutpingAt = (list: [string, string | null][], index: number, fallback: string) => {
+  const jyutping = list[index]?.[1];
+  return jyutping ? stripJyutpingTones(jyutping.replace(/\s+/g, '')) : fallback;
+};
+
+const getTraditionalText = (text: string) => toTraditional(text);
+
+const getDisplayText = (text: string, scriptMode: ScriptMode) => {
+  const traditional = getTraditionalText(text);
+  return scriptMode === 'traditional' ? traditional : toSimplified(traditional);
+};
+
 const preprocessText = (text: string) => text.replace(/、/g, '，').replace(/[「」『』]/g, '');
 
-const normalizeInput = (input: string) => {
+const normalizeInput = (input: string, romanizationMode: RomanizationMode, jyutpingApi: JyutpingApi | null) => {
   let normalized = '';
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
-    if (/[\u4e00-\u9fa5]/.test(char)) {
-      normalized += pinyin(char, { toneType: 'none', v: true });
+    if (isChineseChar(char)) {
+      const traditionalChar = getTraditionalText(char);
+      if (romanizationMode === 'pinyin') {
+        normalized += toPinyin(traditionalChar);
+      } else {
+        const jyutping = jyutpingApi?.getJyutpingList(traditionalChar)[0]?.[1] ?? null;
+        normalized += jyutping ? stripJyutpingTones(jyutping.replace(/\s+/g, '')) : traditionalChar;
+      }
     } else {
       normalized += char;
     }
+  }
+  if (romanizationMode === 'jyutping') {
+    normalized = stripJyutpingTones(normalized);
   }
   return normalized;
 };
@@ -74,37 +114,51 @@ const isAcceptedPunctuation = (expected: string, actual: string) =>
 const matchesExpected = (expected: string, actual: string) =>
   expected === actual || isAcceptedPunctuation(expected, actual);
 
-const buildGroupMap = (text: string, disableSpace: boolean): GroupMapItem[] => {
-  const chars = Array.from(text);
+const buildGroupMap = (
+  text: string,
+  disableSpace: boolean,
+  romanizationMode: RomanizationMode,
+  scriptMode: ScriptMode,
+  jyutpingApi: JyutpingApi | null
+): GroupMapItem[] => {
+  const traditionalText = getTraditionalText(text);
+  const displayText = getDisplayText(text, scriptMode);
+  const displayChars = Array.from(displayText);
+  const romanizationChars = Array.from(traditionalText);
+  const jyutpingList = romanizationMode === 'jyutping' ? getJyutpingList(traditionalText, jyutpingApi) : [];
   const groups: GroupMapItem[] = [];
   let expectedPos = 0;
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    const isZh = /[\u4e00-\u9fa5]/.test(char);
+  for (let i = 0; i < displayChars.length; i++) {
+    const displayChar = displayChars[i];
+    const romanizationChar = romanizationChars[i] ?? displayChar;
+    const isZh = isChineseChar(romanizationChar);
     if (isZh) {
-      const py = pinyin(char, { toneType: 'none', v: true });
+      const romanized =
+        romanizationMode === 'pinyin'
+          ? toPinyin(romanizationChar)
+          : getJyutpingAt(jyutpingList, i, romanizationChar);
       const startPos = expectedPos;
-      const endPos = expectedPos + py.length;
+      const endPos = expectedPos + romanized.length;
       groups.push({
         type: 'pinyin',
         index: i,
-        hanzi: char,
-        pinyinText: py,
+        hanzi: displayChar,
+        pinyinText: romanized,
         startPos,
         endPos
       });
       expectedPos = endPos;
       continue;
     }
-    if (char.trim() || char === ' ') {
-      const isSpace = char === ' ' || char === '\u00A0';
+    if (displayChar.trim() || displayChar === ' ') {
+      const isSpace = displayChar === ' ' || displayChar === '\u00A0';
       const charLength = disableSpace && isSpace ? 0 : 1;
       const startPos = expectedPos;
       const endPos = expectedPos + charLength;
       groups.push({
         type: 'single',
         index: i,
-        char,
+        char: displayChar,
         isSpace,
         startPos,
         endPos
@@ -115,16 +169,31 @@ const buildGroupMap = (text: string, disableSpace: boolean): GroupMapItem[] => {
   return groups;
 };
 
-const getExpectedText = (text: string, disableSpace: boolean) => {
+const getExpectedText = (
+  text: string,
+  disableSpace: boolean,
+  romanizationMode: RomanizationMode,
+  scriptMode: ScriptMode,
+  jyutpingApi: JyutpingApi | null
+) => {
+  const traditionalText = getTraditionalText(text);
+  const displayText = getDisplayText(text, scriptMode);
+  const displayChars = Array.from(displayText);
+  const romanizationChars = Array.from(traditionalText);
+  const jyutpingList = romanizationMode === 'jyutping' ? getJyutpingList(traditionalText, jyutpingApi) : [];
   let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (/[\u4e00-\u9fa5]/.test(char)) {
-      result += pinyin(char, { toneType: 'none', v: true });
-    } else if (char === ' ') {
-      if (!disableSpace) result += char;
-    } else if (char.trim()) {
-      result += char;
+  for (let i = 0; i < displayChars.length; i++) {
+    const displayChar = displayChars[i];
+    const romanizationChar = romanizationChars[i] ?? displayChar;
+    if (isChineseChar(romanizationChar)) {
+      result +=
+        romanizationMode === 'pinyin'
+          ? toPinyin(romanizationChar)
+          : getJyutpingAt(jyutpingList, i, romanizationChar);
+    } else if (displayChar === ' ') {
+      if (!disableSpace) result += displayChar;
+    } else if (displayChar.trim()) {
+      result += displayChar;
     }
   }
   return result;
@@ -145,7 +214,15 @@ const calculateConsistency = (timestamps: number[], startTime: number) => {
   return mean > 0 ? Math.max(0, Math.min(100, Math.round(100 * (1 - stdDev / mean)))) : 0;
 };
 
-export function Game({ text, disableSpace, onRestart, visible }: GameProps) {
+export function Game({
+  text,
+  disableSpace,
+  onRestart,
+  visible,
+  romanizationMode,
+  scriptMode,
+  jyutpingApi
+}: GameProps) {
   const [currentText, setCurrentText] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -165,11 +242,15 @@ export function Game({ text, disableSpace, onRestart, visible }: GameProps) {
   const pauseCheckIntervalRef = useRef<number | null>(null);
 
   const expectedText = useMemo(
-    () => (currentText ? getExpectedText(currentText, disableSpace) : ''),
-    [currentText, disableSpace]
+    () =>
+      currentText ? getExpectedText(currentText, disableSpace, romanizationMode, scriptMode, jyutpingApi) : '',
+    [currentText, disableSpace, romanizationMode, scriptMode, jyutpingApi]
   );
 
-  const groupMap = useMemo(() => buildGroupMap(currentText, disableSpace), [currentText, disableSpace]);
+  const groupMap = useMemo(
+    () => buildGroupMap(currentText, disableSpace, romanizationMode, scriptMode, jyutpingApi),
+    [currentText, disableSpace, romanizationMode, scriptMode, jyutpingApi]
+  );
 
   useEffect(() => {
     isActiveRef.current = isActive;
@@ -354,7 +435,7 @@ export function Game({ text, disableSpace, onRestart, visible }: GameProps) {
   const handleInput = (rawInput: string) => {
     if (!isActive) return;
     if (isNormalizingRef.current) return;
-    const normalized = normalizeInput(rawInput);
+    const normalized = normalizeInput(rawInput, romanizationMode, jyutpingApi);
     if (rawInput !== normalized && inputRef.current) {
       isNormalizingRef.current = true;
       const cursorPos = inputRef.current.selectionStart || 0;

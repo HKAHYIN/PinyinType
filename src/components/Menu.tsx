@@ -3,12 +3,22 @@ import { ARTICLES } from '../data/articles';
 import { VOCABULARY } from '../data/vocabulary';
 
 type MenuProps = {
-  onStart: (text: string) => void;
+  onStart: (text: string) => void | Promise<void>;
+  romanizationMode: 'pinyin' | 'jyutping';
+  scriptMode: 'simplified' | 'traditional';
+  onRomanizationChange: (mode: 'pinyin' | 'jyutping') => void;
+  onScriptChange: (mode: 'simplified' | 'traditional') => void;
 };
 
 const WORD_COUNTS = [10, 25, 30, 40, 50, 100, 200];
 
-export function Menu({ onStart }: MenuProps) {
+export function Menu({
+  onStart,
+  romanizationMode,
+  scriptMode,
+  onRomanizationChange,
+  onScriptChange
+}: MenuProps) {
   const [selectedWordCount, setSelectedWordCount] = useState(50);
   const [customText, setCustomText] = useState('');
 
@@ -20,9 +30,41 @@ export function Menu({ onStart }: MenuProps) {
 
   return (
     <div style={{ width: '100%' }}>
+      <div style={{ marginBottom: 30 }}>
+        <p style={{ color: 'var(--sub-color)', margin: '0 0 8px 0' }}>Romanization</p>
+        <div className="menu-bar">
+          <span
+            className={`menu-item${romanizationMode === 'pinyin' ? ' active' : ''}`}
+            onClick={() => onRomanizationChange('pinyin')}
+          >
+            漢語拼音
+          </span>
+          <span
+            className={`menu-item${romanizationMode === 'jyutping' ? ' active' : ''}`}
+            onClick={() => onRomanizationChange('jyutping')}
+          >
+            粵語拼音
+          </span>
+        </div>
+        <p style={{ color: 'var(--sub-color)', margin: '15px 0 8px 0' }}>Script</p>
+        <div className="menu-bar">
+          <span
+            className={`menu-item${scriptMode === 'simplified' ? ' active' : ''}`}
+            onClick={() => onScriptChange('simplified')}
+          >
+            简体
+          </span>
+          <span
+            className={`menu-item${scriptMode === 'traditional' ? ' active' : ''}`}
+            onClick={() => onScriptChange('traditional')}
+          >
+            繁體
+          </span>
+        </div>
+      </div>
       <div id="menu-grid" className="grid">
         {ARTICLES.map((art) => (
-          <div key={art.title} className="card" onClick={() => onStart(art.content)}>
+          <div key={art.title} className="card" onClick={() => void onStart(art.content)}>
             <h3>{art.title}</h3>
             <p>{art.content}</p>
           </div>
@@ -45,7 +87,11 @@ export function Menu({ onStart }: MenuProps) {
             ))}
           </div>
         </div>
-        <button className="start-btn" id="btn-random" onClick={() => onStart(generateRandomText(selectedWordCount))}>
+        <button
+          className="start-btn"
+          id="btn-random"
+          onClick={() => void onStart(generateRandomText(selectedWordCount))}
+        >
           Start Random
         </button>
       </div>
@@ -62,7 +108,7 @@ export function Menu({ onStart }: MenuProps) {
         <button
           className="start-btn"
           id="btn-custom"
-          onClick={() => customText.trim() && onStart(customText)}
+          onClick={() => customText.trim() && void onStart(customText)}
         >
           Start Custom
         </button>

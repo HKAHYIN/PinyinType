@@ -13,6 +13,7 @@ node_modules
 # Build output
 dist
 dist-ssr
+/.vite
 
 # Local environment files
 *.local
@@ -33,6 +34,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.*
 
 Thumbs.db
 Desktop.ini
