@@ -14,6 +14,7 @@ node_modules
 dist
 dist-ssr
 /.vite
+.vite
 
 # Local environment files
 *.local
