@@ -334,19 +334,13 @@ export function Game({
         inputRef.current?.focus();
       }
     };
-    const preventContext = (e: Event) => {
-      e.preventDefault();
-      return false;
-    };
     document.body.addEventListener('click', focusHandler);
     document.body.addEventListener('touchstart', focusHandler, { passive: false });
     document.body.addEventListener('touchend', focusHandler, { passive: false });
-    document.body.addEventListener('contextmenu', preventContext);
     return () => {
       document.body.removeEventListener('click', focusHandler);
       document.body.removeEventListener('touchstart', focusHandler);
       document.body.removeEventListener('touchend', focusHandler);
-      document.body.removeEventListener('contextmenu', preventContext);
     };
   }, [isActive, isPaused]);
 
