@@ -7,7 +7,6 @@ import { Menu } from './components/Menu.tsx';
 type Route = 'menu' | 'practice';
 type RomanizationMode = 'pinyin' | 'jyutping';
 type ScriptMode = 'simplified' | 'traditional';
-type JyutpingListFn = (text: string) => [string, string | null][];
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -45,7 +44,6 @@ export function App() {
   const [gameText, setGameText] = useState<string | null>(null);
   const [romanizationMode, setRomanizationMode] = useState<RomanizationMode>(() => getInitialRomanizationMode());
   const [scriptMode, setScriptMode] = useState<ScriptMode>(() => getInitialScriptMode());
-  const jyutpingList: JyutpingListFn = getJyutpingList;
 
   const navigateTo = (next: Route) => {
     const path = next === 'menu' ? BASE_URL : `${BASE_URL}practice`;
@@ -114,7 +112,7 @@ export function App() {
         visible={route === 'practice'}
         romanizationMode={romanizationMode}
         scriptMode={scriptMode}
-        jyutpingList={jyutpingList}
+        jyutpingList={getJyutpingList}
       />
     </>
   );

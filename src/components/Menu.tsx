@@ -37,7 +37,7 @@ export function Menu({
             className={`menu-item${romanizationMode === 'pinyin' ? ' active' : ''}`}
             onClick={() => onRomanizationChange('pinyin')}
           >
-            漢語拼音
+            汉语拼音
           </span>
           <span
             className={`menu-item${romanizationMode === 'jyutping' ? ' active' : ''}`}
@@ -46,7 +46,7 @@ export function Menu({
             粵語拼音
           </span>
         </div>
-        <p style={{ color: 'var(--sub-color)', margin: '15px 0 8px 0' }}>Script</p>
+        <p style={{ color: 'var(--sub-color)', margin: '15px 0 8px 0' }}>Language</p>
         <div className="menu-bar">
           <span
             className={`menu-item${scriptMode === 'simplified' ? ' active' : ''}`}

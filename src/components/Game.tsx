@@ -62,8 +62,6 @@ const toPinyin = (char: string) => pinyin(char, { toneType: 'none', v: true });
 
 const stripJyutpingTones = (text: string) => text.replace(/[1-6]/g, '');
 
-const getJyutpingList = (text: string, jyutpingList: JyutpingListFn) => jyutpingList(text);
-
 const getJyutpingAt = (list: [string, string | null][], index: number, fallback: string) => {
   const jyutping = list[index]?.[1];
   return jyutping ? stripJyutpingTones(jyutping.replace(/\s+/g, '')) : fallback;
@@ -122,7 +120,7 @@ const buildGroupMap = (
   const displayText = getDisplayText(text, scriptMode);
   const displayChars = Array.from(displayText);
   const romanizationChars = Array.from(traditionalText);
-  const jyutpingListEntries = romanizationMode === 'jyutping' ? getJyutpingList(traditionalText, jyutpingList) : [];
+  const jyutpingListEntries = romanizationMode === 'jyutping' ? jyutpingList(traditionalText) : [];
   const groups: GroupMapItem[] = [];
   let expectedPos = 0;
   for (let i = 0; i < displayChars.length; i++) {
@@ -177,7 +175,7 @@ const getExpectedText = (
   const displayText = getDisplayText(text, scriptMode);
   const displayChars = Array.from(displayText);
   const romanizationChars = Array.from(traditionalText);
-  const jyutpingListEntries = romanizationMode === 'jyutping' ? getJyutpingList(traditionalText, jyutpingList) : [];
+  const jyutpingListEntries = romanizationMode === 'jyutping' ? jyutpingList(traditionalText) : [];
   let result = '';
   for (let i = 0; i < displayChars.length; i++) {
     const displayChar = displayChars[i];
