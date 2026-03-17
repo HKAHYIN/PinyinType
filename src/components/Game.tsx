@@ -1,5 +1,6 @@
 import { useGameEngine } from './game/useGameEngine.ts';
 import type { GameProps } from './game/types.ts';
+import './Game.css';
 
 export function Game({
   text,

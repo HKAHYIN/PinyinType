@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './Menu.css';
 import { ARTICLES } from '../data/articles';
 import { VOCABULARY } from '../data/vocabulary';
 

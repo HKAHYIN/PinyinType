@@ -1,3 +1,5 @@
+import './Header.css';
+
 type HeaderProps = {
   disableSpace: boolean;
   onToggleSpace: (value: boolean) => void;
