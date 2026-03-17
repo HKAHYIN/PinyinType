@@ -28,8 +28,8 @@ Website: https://hkahyin.github.io/PinyinType/
 ## Tech Stack | 技术栈
 
 **Frontend**
-- Vite + React 18 + TypeScript
-- CSS (no frameworks)
+- Vite + React + TypeScript
+- Vanilla CSS
 
 **Romanization Libraries**
 - `pinyin-pro` - Mandarin pinyin conversion
